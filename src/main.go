@@ -1,31 +1,51 @@
 package main
 
 import (
-	"fmt"
 	"database/sql"
+	"fmt"
+	"os"
+	"strconv"
+
 	_ "github.com/lib/pq"
 )
+
 const (
-	host = "timescaledb"
-	port = 5432
-	user = "postgres"
+	host     = "timescaledb"
+	port     = 5432
+	user     = "postgres"
 	password = "password"
-	dbname = "test_db"
+	dbname   = "test_db"
 )
 
 func main() {
-	fmt.Println("Teste")
+
+	host := os.Getenv("host")
+	portStr := os.Getenv("port")
+	user := os.Getenv("user")
+	password := os.Getenv("password")
+	dbname := os.Getenv("dbname")
+
+	port, err := strconv.Atoi(portStr)
+
+	if err != nil {
+		fmt.Println("Erro ao converter a porta para um número:", err)
+		port = 5432
+	}
+
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 	db, err := sql.Open("postgres", psqlInfo)
+
 	if err != nil {
-    		panic(err)
-  	}
-  	defer db.Close()
+		panic(err)
+	}
 
-  	err = db.Ping()
-  	if err != nil {
-    		panic(err)
-  	}
+	defer db.Close()
 
-  	fmt.Println("Successfully connected!")
+	err = db.Ping()
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Successfully connected!")
 }

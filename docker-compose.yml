@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  myapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+  timescaledb:
+    image: timescale/timescaledb-ha:pg16
+    environment:
+      POSTGRES_PASSWORD: ${password}
+      POSTGRES_DB: ${dbname}
+    ports: 
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+  ollama:
+    container_name: ollama
+    image: ollama/ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: >
+      /bin/sh -c "ollama serve & wait-for-it -t 60 localhost:11434 && ollama pull llama3.2 && ollama pull nomic-embed-text"
+    
+    healthcheck:
+      test: ["CMD", "ollama", "list", "nomic-embed-text"]
+      interval: 10s
+      timeout: 5s
+      retries: 50
+      start_period: 100s
+
+volumes:
+  db-data:
+  ollama:
